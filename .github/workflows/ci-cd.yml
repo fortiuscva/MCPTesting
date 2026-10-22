@@ -1,0 +1,129 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  deployments: write
+
+jobs:
+  build:
+    name: Build AL app
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Initialize AL-Go
+        uses: microsoft/AL-Go-Actions/WorkflowInitialize@v10.0
+        with:
+          shell: powershell
+
+      - name: Read AL-Go settings
+        uses: microsoft/AL-Go-Actions/ReadSettings@v10.0
+        with:
+          shell: powershell
+          get: useCompilerFolder,workspaceCompilation,artifact,doNotRunTests,type
+
+      - name: Determine Business Central artifact
+        uses: microsoft/AL-Go-Actions/DetermineArtifactUrl@v10.0
+        with:
+          shell: powershell
+          project: .
+
+      - name: Compile AL app
+        uses: microsoft/AL-Go-Actions/CompileApps@v10.0
+        env:
+          BuildMode: Default
+        with:
+          shell: powershell
+          artifact: ${{ env.artifact }}
+          project: .
+          buildMode: Default
+
+      - name: Calculate artifact name
+        id: artifact-name
+        uses: microsoft/AL-Go-Actions/CalculateArtifactNames@v10.0
+        with:
+          shell: powershell
+          project: .
+          buildMode: Default
+
+      - name: Upload compiled app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact-name.outputs.AppsArtifactsName }}
+          path: .buildartifacts/Apps/
+          if-no-files-found: error
+          retention-days: 14
+
+  deploy:
+    name: Deploy to Cronus29 sandbox
+    needs: build
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: windows-latest
+    environment:
+      name: Cronus29
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Download compiled app
+        uses: actions/download-artifact@v4
+        with:
+          path: .artifacts
+
+      - name: Initialize AL-Go
+        uses: microsoft/AL-Go-Actions/WorkflowInitialize@v10.0
+        with:
+          shell: powershell
+
+      - name: Read AL-Go settings
+        uses: microsoft/AL-Go-Actions/ReadSettings@v10.0
+        with:
+          shell: powershell
+
+      - name: Determine deployment environment
+        id: deployment-environment
+        uses: microsoft/AL-Go-Actions/DetermineDeploymentEnvironments@v10.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          shell: powershell
+          getEnvironments: Cronus29
+          type: CD
+
+      - name: Read deployment credentials
+        id: deployment-secrets
+        uses: microsoft/AL-Go-Actions/ReadSecrets@v10.0
+        with:
+          shell: powershell
+          gitHubSecrets: ${{ toJson(secrets) }}
+          getSecrets: Cronus29-AuthContext,Cronus29_AuthContext,AuthContext
+
+      - name: Deploy to Business Central
+        uses: microsoft/AL-Go-Actions/Deploy@v10.0
+        env:
+          Secrets: ${{ steps.deployment-secrets.outputs.Secrets }}
+        with:
+          shell: powershell
+          environmentName: Cronus29
+          artifactsFolder: .artifacts
+          type: CD
+          deploymentEnvironmentsJson: ${{ steps.deployment-environment.outputs.DeploymentEnvironmentsJson }}

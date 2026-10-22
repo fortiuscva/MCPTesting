@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/AL-Go-Actions/main/.Modules/settings.schema.json",
+  "type": "PTE",
+  "country": "us",
+  "artifact": "bcartifacts/sandbox/29.0/us/latest",
+  "appFolders": [
+    "."
+  ],
+  "workspaceCompilation": {
+    "enabled": true
+  }
+}
