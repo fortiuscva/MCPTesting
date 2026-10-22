@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Adcirrus - Cronus29",
+            "request": "launch",
+            "type": "al",
+            "tenant": "55628bbe-44d0-472f-803c-668912f9c1f8",
+            "environmentType": "Sandbox",
+            "environmentName": "Cronus29",
+            "startupObjectId": 22,
+            "startupObjectType": "Page",
+            "breakOnError": "All",
+            "launchBrowser": true,
+            "enableLongRunningSqlStatements": true,
+            "enableSqlInformationDebugger": true
+        }
+    ]
+}
